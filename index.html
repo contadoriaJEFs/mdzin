@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leitor e Editor Markdown</title>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3f6f9; color: #263238; font-family: Arial, Helvetica, sans-serif; transition: background .25s, color .25s; }
+
+    .top { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #d7dee5; padding: 12px 18px; display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 2px 6px rgba(0,0,0,.08); transition: background .25s, border-color .25s; }
+    .titulo { font-weight: 700; color: #1565c0; font-size: 18px; }
+    .acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn { border: 0; border-radius: 6px; padding: 9px 13px; background: #1565c0; color: #fff; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
+    .btn:hover { background: #0d47a1; }
+    .btn.sec { background: #546e7a; } .btn.sec:hover { background: #37474f; }
+    .btn.green { background: #2e7d32; } .btn.green:hover { background: #1b5e20; }
+    .btn.orange { background: #ef6c00; } .btn.orange:hover { background: #e65100; }
+    .btn.purple { background: #6a1b9a; } .btn.purple:hover { background: #4a148c; }
+    .btn.icon-btn { padding: 9px 11px; font-size: 15px; line-height: 1; min-width: 38px; }
+
+    .btn-mini {
+        border: 0;
+        background: #546e7a;
+        color: #fff;
+        padding: 4px 9px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        transition: background .15s, color .15s;
+        white-space: nowrap;
+    }
+    .btn-mini:hover { background: #37474f; }
+    .btn-mini.on { background: #1565c0; }
+    .btn-mini.on:hover { background: #0d47a1; }
+    .btn-mini.off { background: #b0bec5; color: #fff; }
+    .btn-mini.off:hover { background: #90a4ae; }
+
+    .preview-controls { display: flex; gap: 6px; align-items: center; }
+
+    .status-bar { max-width: 1500px; margin: 10px auto 0; padding: 0 18px; color: #546e7a; font-size: 13px; }
+    .tutorial { max-width: 1500px; margin: 10px auto 0; padding: 0 18px; }
+    .tutorial details { background: #fff; border: 1px solid #dce3e8; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,.05); overflow: hidden; }
+    .tutorial summary { cursor: pointer; padding: 10px 14px; background: #eef5fb; color: #1565c0; font-weight: 700; user-select: none; }
+    .tutorial summary:hover { background: #e3f2fd; }
+    .tutorial-conteudo { padding: 12px 16px 14px; color: #37474f; font-size: 13px; }
+    .tutorial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .tutorial-item { border: 1px solid #e0e7eb; border-radius: 7px; padding: 9px; background: #fafcfd; }
+    .tutorial-item strong { display: block; color: #1565c0; margin-bottom: 4px; }
+    .tutorial-item code { display: block; background: #f1f3f4; padding: 6px 8px; border-radius: 5px; font-family: Consolas, "Courier New", monospace; white-space: pre-wrap; }
+
+    .dropzone-container { max-width: 1500px; margin: 12px auto 0; padding: 0 18px; }
+    .dropzone { display: block; border: 2px dashed #90caf9; background: #e3f2fd; color: #1565c0; padding: 18px; text-align: center; border-radius: 8px; cursor: pointer; transition: background 0.3s, border-color 0.3s; font-weight: bold; font-size: 14px; }
+    .dropzone:hover, .dropzone.dragover { background: #bbdefb; border-color: #1565c0; }
+    .dropzone small { display: block; font-weight: 400; color: #1976d2; margin-top: 4px; font-size: 12px; }
+
+    .layout { max-width: 1500px; margin: 12px auto 28px; padding: 0 18px; display: grid; grid-template-columns: 250px 1fr 1fr; gap: 14px; min-height: calc(100vh - 220px); transition: all 0.3s ease; }
+    .layout.reading-mode { grid-template-columns: 250px 1fr; }
+    .layout.reading-mode #editor-painel { display: none; }
+
+    .painel { background: #fff; border: 1px solid #dce3e8; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); display: flex; flex-direction: column; min-height: 500px; min-width: 0; transition: background .25s, border-color .25s; }
+    .painel-titulo { padding: 11px 14px; background: #eef5fb; border-bottom: 1px solid #dce3e8; color: #1565c0; font-weight: 700; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: background .25s, border-color .25s; }
+    .painel-titulo small { font-weight: 400; color: #607d8b; }
+
+    .titulo-info { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .titulo-info small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+
+    .save-indicator {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
+        white-space: nowrap;
+        transition: opacity .3s;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+    .save-indicator.pendente { color: #b26500; background: #fff3e0; }
+    .save-indicator.salvo { color: #1b5e20; background: #e8f5e9; }
+    .save-indicator.oculto { opacity: 0; pointer-events: none; }
+
+    #editor { width: 100%; flex: 1; resize: none; border: 0; outline: none; padding: 18px; font: 14px/1.55 Consolas, "Courier New", monospace; color: #263238; background: #fff; tab-size: 4; transition: background .25s, color .25s; }
+    #preview { flex: 1; overflow: auto; padding: 28px 34px; line-height: 1.55; }
+
+    .rodape-editor {
+        padding: 7px 14px;
+        background: #fafcfd;
+        border-top: 1px solid #eef2f5;
+        font-size: 11px;
+        color: #607d8b;
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+        transition: background .25s, border-color .25s;
+    }
+    .rodape-editor .sep { color: #cfd8dc; }
+    .rodape-editor kbd {
+        display: inline-block;
+        padding: 1px 5px;
+        background: #eceff1;
+        border: 1px solid #cfd8dc;
+        border-radius: 3px;
+        font-family: Consolas, monospace;
+        font-size: 10px;
+        color: #455a64;
+    }
+    .rodape-atalhos { margin-left: auto; color: #90a4ae; }
+
+    /* SIDEBAR */
+    .sidebar { min-width: 0; }
+    .sidebar-busca { padding: 8px 10px; border-bottom: 1px solid #eef2f5; background: #fafcfd; transition: background .25s, border-color .25s; }
+    .sidebar-busca input { width: 100%; padding: 7px 10px; border: 1px solid #cfd8dc; border-radius: 6px; font-size: 13px; color: #263238; outline: none; transition: border-color .2s, box-shadow .2s, background .25s, color .25s; }
+    .sidebar-busca input:focus { border-color: #1565c0; box-shadow: 0 0 0 2px rgba(21,101,192,.12); }
+    .sidebar-busca input::placeholder { color: #90a4ae; }
+
+    .sidebar-ordem {
+        padding: 0 10px 10px;
+        background: #fafcfd;
+        border-bottom: 1px solid #eef2f5;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: #607d8b;
+        transition: background .25s, border-color .25s;
+    }
+    .sidebar-ordem label { font-weight: 600; white-space: nowrap; }
+    .sidebar-ordem select {
+        flex: 1;
+        padding: 6px 8px;
+        border: 1px solid #cfd8dc;
+        border-radius: 5px;
+        background: #fff;
+        color: #263238;
+        font-size: 12px;
+        outline: none;
+        cursor: pointer;
+        min-width: 0;
+        transition: background .25s, color .25s, border-color .25s;
+    }
+    .sidebar-ordem select:focus { border-color: #1565c0; box-shadow: 0 0 0 2px rgba(21,101,192,.12); }
+
+    .lista-docs { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+    .lista-docs li { position: relative; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #eef2f5; font-size: 13px; color: #37474f; display: flex; align-items: center; gap: 8px; transition: background 0.15s, opacity 0.15s; }
+    .lista-docs li:hover { background: #f5f9fc; }
+    .lista-docs li.ativo { background: #e3f2fd; color: #0d47a1; font-weight: 700; box-shadow: inset 3px 0 0 #1565c0; }
+    .lista-docs li .icone { flex: 0 0 auto; }
+    .lista-docs li .nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lista-vazia { padding: 16px 14px; color: #90a4ae; font-size: 12px; text-align: center; font-style: italic; }
+
+    .lista-docs li .btn-item {
+        flex: 0 0 auto;
+        border: 0;
+        background: transparent;
+        color: #b0bec5;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 4px;
+        line-height: 1;
+        transition: background 0.15s, color 0.15s;
+    }
+    .lista-docs li .btn-dup:hover { background: #c8e6c9; color: #2e7d32; }
+    .lista-docs li .btn-x:hover   { background: #ffcdd2; color: #c62828; }
+    .lista-docs li.ativo .btn-dup { color: #5c8bc4; }
+    .lista-docs li.ativo .btn-x   { color: #5c8bc4; }
+    .lista-docs li.ativo .btn-dup:hover { background: #c8e6c9; color: #2e7d32; }
+    .lista-docs li.ativo .btn-x:hover   { background: #ffcdd2; color: #c62828; }
+
+    .lista-docs li input.nome-input {
+        flex: 1;
+        border: 1px solid #1565c0;
+        border-radius: 4px;
+        padding: 3px 6px;
+        font-size: 13px;
+        font-family: inherit;
+        outline: none;
+        min-width: 0;
+        background: #fff;
+        color: #263238;
+        box-shadow: 0 0 0 2px rgba(21,101,192,.15);
+    }
+
+    .lista-docs li[draggable="true"] { cursor: grab; }
+    .lista-docs li.dragging { opacity: 0.35; }
+    .lista-docs li.drag-over-top::after {
+        content: ""; position: absolute; left: 0; right: 0; top: 0;
+        height: 3px; background: #1565c0; z-index: 3;
+    }
+    .lista-docs li.drag-over-bottom::after {
+        content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+        height: 3px; background: #1565c0; z-index: 3;
+    }
+
+    .sidebar-rodape { padding: 10px; border-top: 1px solid #eef2f5; display: flex; gap: 6px; transition: border-color .25s; }
+    .sidebar-rodape .btn { flex: 1; padding: 8px 6px; font-size: 11px; }
+
+    /* Markdown renderizado */
+    h1, h2, h3, h4, h5, h6 { color: #1565c0; margin: 1.3em 0 .55em; line-height: 1.25; }
+    h1 { font-size: 28px; border-bottom: 2px solid #e3edf5; padding-bottom: 10px; }
+    h2 { font-size: 22px; } h3 { font-size: 18px; }
+    p { margin: .65em 0; } ul, ol { padding-left: 28px; } li { margin: 4px 0; }
+    blockquote { margin: 16px 0; padding: 10px 18px; border-left: 4px solid #90caf9; background: #f5f9fc; color: #455a64; transition: background .25s, color .25s; }
+    hr { border: 0; border-top: 1px solid #dce3e8; margin: 24px 0; }
+    code { background: #eef3f7; padding: 2px 5px; border-radius: 4px; font-family: Consolas, monospace; }
+    pre { background: #263238; color: #eceff1; padding: 16px; border-radius: 7px; overflow: auto; }
+    pre code { background: transparent; padding: 0; color: inherit; }
+    .md-table-wrap { overflow: auto; margin: 18px 0; }
+    table { border-collapse: collapse; width: 100%; min-width: 520px; }
+    th, td { border: 1px solid #cfd8dc; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #e3f2fd; color: #0d47a1; font-weight: 700; }
+    tr:nth-child(even) td { background: #fafcfd; }
+    a { color: #1565c0; }
+
+    /* Syntax highlight (dentro de <pre><code>) */
+    pre code .tok-comment  { color: #7f9d6a; font-style: italic; }
+    pre code .tok-string   { color: #e0a878; }
+    pre code .tok-keyword  { color: #79b8ff; font-weight: 600; }
+    pre code .tok-number   { color: #b5cea8; }
+    pre code .tok-function { color: #e8d17a; }
+
+    /* Leitor de voz */
+    .leitor-voz { max-width: 1500px; margin: 12px auto 0; padding: 12px 18px; background: #fff; border: 1px solid #dce3e8; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); transition: background .25s, border-color .25s; }
+    .leitor-voz-titulo { font-weight: 700; color: #1565c0; margin-bottom: 9px; }
+    .leitor-voz-controles { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .leitor-voz-controles .btn { margin: 0; }
+    .leitor-voz-campo { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #455a64; }
+    .leitor-voz-campo select { padding: 8px 9px; border: 1px solid #b0bec5; border-radius: 6px; background: #fff; color: #263238; max-width: 260px; transition: background .25s, color .25s, border-color .25s; }
+    .voz-status { font-size: 12px; color: #607d8b; padding: 6px 8px; border-radius: 5px; background: #f5f9fc; border: 1px solid #dce8f0; transition: background .25s, color .25s, border-color .25s; }
+
+    /* ======================================================
+       TEMA ESCURO
+       ====================================================== */
+    body.dark { background: #12151a; color: #e0e3e7; }
+    body.dark .top { background: #1c2027; border-bottom-color: #2f343c; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+    body.dark .titulo { color: #6db3f2; }
+    body.dark .status-bar { color: #a0a8b3; }
+    body.dark .tutorial details { background: #1c2027; border-color: #2f343c; }
+    body.dark .tutorial summary { background: #262c35; color: #6db3f2; }
+    body.dark .tutorial summary:hover { background: #2e3541; }
+    body.dark .tutorial-conteudo { color: #c8cdd4; }
+    body.dark .tutorial-item { background: #181c22; border-color: #2f343c; }
+    body.dark .tutorial-item strong { color: #6db3f2; }
+    body.dark .tutorial-item code { background: #2a2f38; color: #c8cdd4; }
+    body.dark .dropzone { background: #1a2c3d; color: #6db3f2; border-color: #2e5a7e; }
+    body.dark .dropzone:hover, body.dark .dropzone.dragover { background: #22405a; border-color: #6db3f2; }
+    body.dark .dropzone small { color: #8fc7f8; }
+    body.dark .painel { background: #1c2027; border-color: #2f343c; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+    body.dark .painel-titulo { background: #262c35; border-bottom-color: #2f343c; color: #6db3f2; }
+    body.dark .painel-titulo small { color: #a0a8b3; }
+    body.dark #editor { background: #1c2027; color: #e0e3e7; }
+    body.dark .rodape-editor { background: #181c22; border-top-color: #262b33; color: #a0a8b3; }
+    body.dark .rodape-editor kbd { background: #2a2f38; border-color: #3a4049; color: #c8cdd4; }
+    body.dark .rodape-editor .sep { color: #4a5058; }
+    body.dark .rodape-atalhos { color: #6b7480; }
+    body.dark .sidebar-busca { background: #181c22; border-bottom-color: #262b33; }
+    body.dark .sidebar-busca input { background: #1c2027; border-color: #3a4049; color: #e0e3e7; }
+    body.dark .sidebar-busca input::placeholder { color: #6b7480; }
+    body.dark .sidebar-ordem { background: #181c22; border-bottom-color: #262b33; color: #a0a8b3; }
+    body.dark .sidebar-ordem select { background: #1c2027; border-color: #3a4049; color: #e0e3e7; }
+    body.dark .lista-docs li { border-bottom-color: #262b33; color: #c8cdd4; }
+    body.dark .lista-docs li:hover { background: #262c35; }
+    body.dark .lista-docs li.ativo { background: #1e3a5f; color: #8fc7f8; }
+    body.dark .lista-docs li.ativo .btn-dup,
+    body.dark .lista-docs li.ativo .btn-x { color: #6db3f2; }
+    body.dark .lista-docs li input.nome-input { background: #1c2027; color: #e0e3e7; border-color: #6db3f2; }
+    body.dark .sidebar-rodape { border-top-color: #262b33; }
+    body.dark .leitor-voz { background: #1c2027; border-color: #2f343c; }
+    body.dark .leitor-voz-titulo { color: #6db3f2; }
+    body.dark .leitor-voz-campo { color: #a0a8b3; }
+    body.dark .leitor-voz-campo select { background: #1c2027; border-color: #3a4049; color: #e0e3e7; }
+    body.dark .voz-status { background: #181c22; border-color: #2f343c; color: #a0a8b3; }
+    body.dark h1, body.dark h2, body.dark h3, body.dark h4, body.dark h5, body.dark h6 { color: #6db3f2; }
+    body.dark h1 { border-bottom-color: #2f343c; }
+    body.dark blockquote { background: #262c35; color: #c8cdd4; border-left-color: #6db3f2; }
+    body.dark hr { border-top-color: #2f343c; }
+    body.dark code { background: #262c35; color: #e0e3e7; }
+    body.dark a { color: #6db3f2; }
+    body.dark th { background: #1e3a5f; color: #8fc7f8; }
+    body.dark tr:nth-child(even) td { background: #181c22; }
+    body.dark table, body.dark th, body.dark td { border-color: #3a4049; }
+    body.dark .save-indicator.salvo { background: #1e3a1e; color: #81c784; }
+    body.dark .save-indicator.pendente { background: #3d2e1a; color: #ffb74d; }
+    body.dark .btn.sec { background: #3a4049; }
+    body.dark .btn.sec:hover { background: #4a5058; }
+    body.dark .btn-mini { background: #3a4049; }
+    body.dark .btn-mini:hover { background: #4a5058; }
+    body.dark .btn-mini.on { background: #1565c0; }
+    body.dark .btn-mini.on:hover { background: #0d47a1; }
+    body.dark .btn-mini.off { background: #3a4049; color: #6b7480; }
+
+    @media(max-width: 1100px) { .layout { grid-template-columns: 210px 1fr 1fr; } .layout.reading-mode { grid-template-columns: 210px 1fr; } }
+    @media(max-width: 900px) {
+        .layout, .layout.reading-mode { grid-template-columns: 1fr; }
+        .tutorial-grid { grid-template-columns: 1fr 1fr; }
+        .top { flex-direction: column; align-items: flex-start; }
+        .sidebar { max-height: 320px; }
+    }
+    @media(max-width: 560px) { .tutorial-grid { grid-template-columns: 1fr; } .rodape-atalhos { display: none; } }
+
+    @media print {
+        .top, .acoes, .status-bar, #editor-painel, .leitor-voz, .tutorial, .dropzone-container, .sidebar { display: none !important; }
+        .layout { display: block; margin: 0; max-width: none; padding: 0; grid-template-columns: none; }
+        .layout.reading-mode { display: block; }
+        .painel { border: 0; box-shadow: none; min-height: auto; background: #fff; }
+        .painel-titulo { display: none; }
+        #preview { padding: 0; color: #000; }
+    }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <div class="titulo">✏️ Editor e Leitor Markdown</div>
+  </div>
+  <div class="acoes">
+    <button class="btn purple" id="btn-modo-leitura">📖 Modo Leitura</button>
+    <button class="btn green" id="btn-baixar-md">📥 Baixar .md</button>
+    <button class="btn orange" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    <button class="btn sec icon-btn" id="btn-tema" title="Alternar tema claro/escuro">🌙</button>
+  </div>
+</div>
+
+<div class="dropzone-container">
+    <label for="file-input" id="dropzone" class="dropzone">
+        📥 Arraste um ou VÁRIOS arquivos .md aqui, ou clique para escolher
+        <small>Você pode selecionar vários arquivos de uma vez — todos serão adicionados à lista lateral.</small>
+    </label>
+    <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple style="display: none;">
+</div>
+
+<div class="status-bar" id="texto-status">Edite o Markdown à esquerda. A prévia é atualizada automaticamente à direita.</div>
+
+<div class="tutorial">
+  <details>
+    <summary>📘 Tutorial rápido — formatação, atalhos e organização</summary>
+    <div class="tutorial-conteudo">
+      <div class="tutorial-grid">
+        <div class="tutorial-item"><strong>Título</strong><code># Título principal
+## Seção</code></div>
+        <div class="tutorial-item"><strong>Negrito e itálico</strong><code>**negrito**  (Ctrl+B)
+*itálico*  (Ctrl+I)</code></div>
+        <div class="tutorial-item"><strong>Lista</strong><code>- Primeiro item
+- Segundo item</code></div>
+        <div class="tutorial-item"><strong>Código com highlight</strong><code>```js
+const x = 1;
+```</code></div>
+        <div class="tutorial-item"><strong>Link</strong><code>[texto](url)  (Ctrl+K)</code></div>
+        <div class="tutorial-item"><strong>Tabela</strong><code>| Col1 | Col2 |
+| --- | --- |
+| A | B |</code></div>
+      </div>
+      <p style="margin-top:10px;color:#546e7a;"><strong>Atalhos:</strong> <kbd>Ctrl+S</kbd> baixa .md · <kbd>Esc</kbd> para voz.</p>
+      <p style="margin-top:6px;color:#546e7a;"><strong>Organizar:</strong> arraste para reordenar (modo Manual) · duplo-clique renomeia · ⧉ duplica · ✕ remove.</p>
+      <p style="margin-top:6px;color:#546e7a;"><strong>Visual:</strong> 🌙 alterna tema · 🔗 no cabeçalho da prévia sincroniza rolagem · blocos de código suportam <code>js</code>, <code>python</code>, <code>html</code>, <code>css</code>, <code>bash</code>, <code>json</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="leitor-voz" id="leitor-voz">
+  <div class="leitor-voz-titulo">🔊 Leitura por voz</div>
+  <div class="leitor-voz-controles">
+    <button class="btn" type="button" id="btn-ler-tudo">▶️ Ler Tudo</button>
+    <button class="btn" type="button" id="btn-ler-selecao">🔊 Ler seleção</button>
+    <button class="btn sec" type="button" onclick="window.speechSynthesis.pause()">⏸️ Pausar</button>
+    <button class="btn sec" type="button" onclick="window.speechSynthesis.resume()">▶️ Continuar</button>
+    <button class="btn orange" type="button" id="btn-parar-leitura">⏹️ Parar</button>
+
+    <label class="leitor-voz-campo">
+      <span>Velocidade</span>
+      <select id="velocidade-voz">
+        <option value="0.75">0,75×</option>
+        <option value="1" selected>1×</option>
+        <option value="1.25">1,25×</option>
+        <option value="1.5">1,5×</option>
+        <option value="2">2×</option>
+      </select>
+    </label>
+    <label class="leitor-voz-campo">
+      <span>Voz</span>
+      <select id="voz-select"><option value="">Carregando vozes...</option></select>
+    </label>
+    <span id="voz-status" class="voz-status">Carregando vozes...</span>
+  </div>
+</div>
+
+<div class="layout" id="layout-principal">
+
+  <aside class="painel sidebar" id="sidebar-painel">
+    <div class="painel-titulo">
+      <span>📚 Documentos <small id="contador-docs">0</small></span>
+      <button class="btn-mini" id="btn-novo-doc" type="button" title="Criar novo documento vazio">+ Novo</button>
+    </div>
+    <div class="sidebar-busca">
+      <input type="search" id="campo-busca" placeholder="🔍 Buscar por nome..." autocomplete="off">
+    </div>
+    <div class="sidebar-ordem">
+      <label for="select-ordem">Ordenar:</label>
+      <select id="select-ordem">
+        <option value="manual">✋ Manual (arrastar)</option>
+        <option value="alfabetica-az">🔤 Alfabética A-Z</option>
+        <option value="alfabetica-za">🔤 Alfabética Z-A</option>
+        <option value="recentes">🕒 Edição recente</option>
+      </select>
+    </div>
+    <ul id="lista-docs" class="lista-docs"></ul>
+    <div class="sidebar-rodape">
+      <button class="btn sec" id="btn-exportar-tudo" type="button" title="Baixar todos os documentos em um só .md">📦 Exportar</button>
+      <button class="btn sec" id="btn-limpar-docs" type="button" title="Remover todos os documentos da lista">🗑️ Limpar</button>
+    </div>
+  </aside>
+
+  <section class="painel" id="editor-painel">
+    <div class="painel-titulo">
+      <span>📝 Markdown</span>
+      <span class="titulo-info">
+        <small id="editor-nome">exemplo.md</small>
+        <span id="save-indicator" class="save-indicator oculto" aria-live="polite"></span>
+      </span>
+    </div>
+    <textarea id="editor" spellcheck="false"># Bem-vindo ao Leitor Markdown!
+
+Escreva seu texto aqui ou **arraste um ou vários arquivos .md na área tracejada acima**.
+
+## Recursos visuais novos
+- 🌙 **Tema escuro** — botão no topo (lua/sol). A preferência é salva.
+- ✨ **Syntax highlight** — blocos de código ganham cor automaticamente.
+- 🔗 **Scroll sync** — botão no cabeçalho da prévia. Rola os dois painéis juntos.
+
+## Exemplo com syntax highlight
+
+\`\`\`js
+// Exemplo em JavaScript
+const saudacao = "Olá, mundo!";
+function cumprimentar(nome) {
+  return \`\${saudacao} — bem-vindo, \${nome}!\`;
+}
+console.log(cumprimentar("Dev"));
+\`\`\`
+
+\`\`\`python
+# Exemplo em Python
+def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        yield a
+        a, b = b, a + b
+
+print(list(fib(10)))
+\`\`\`
+
+## Atalhos de teclado
+- \`Ctrl+B\` → **negrito**
+- \`Ctrl+I\` → *itálico*
+- \`Ctrl+K\` → inserir link
+- \`Ctrl+S\` → baixar o arquivo .md
+- \`Esc\` → parar leitura por voz
+
+> Dica: comece um bloco de código com \`\`\`js, \`\`\`python, \`\`\`html, \`\`\`css, \`\`\`bash ou \`\`\`json para o highlight automático.
+
+| Tabelas | Funcionam |
+|---------|-----------|
+| Linha 1 | Dado A    |
+| Linha 2 | Dado B    |</textarea>
+    <div class="rodape-editor">
+      <span id="contador-palavras">0 palavras</span>
+      <span class="sep">·</span>
+      <span id="contador-caracteres">0 caracteres</span>
+      <span class="sep">·</span>
+      <span id="tempo-leitura">~0 min de leitura</span>
+      <span class="rodape-atalhos"><kbd>Ctrl+B</kbd> negrito · <kbd>Ctrl+I</kbd> itálico · <kbd>Ctrl+K</kbd> link · <kbd>Ctrl+S</kbd> salvar</span>
+    </div>
+  </section>
+
+  <section class="painel">
+    <div class="painel-titulo">
+      <span>👁️ Prévia formatada</span>
+      <span class="preview-controls">
+        <button class="btn-mini on" id="btn-sync-scroll" type="button" title="Sincronizar rolagem editor ↔ prévia">🔗</button>
+        <button class="btn-mini" id="btn-copiar-preview" type="button" title="Copiar o texto renderizado">📋 Copiar</button>
+      </span>
+    </div>
+    <article id="preview"></article>
+  </section>
+</div>
+
+<script>
+(function() {
+    "use strict";
+
+    // ============================================================
+    // REFERÊNCIAS
+    // ============================================================
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const campoEditor = document.getElementById('editor');
+    const campoPreview = document.getElementById('preview');
+    const campoStatus = document.getElementById('texto-status');
+    const layoutPrincipal = document.getElementById('layout-principal');
+    const btnModoLeitura = document.getElementById('btn-modo-leitura');
+    const listaDocsEl = document.getElementById('lista-docs');
+    const contadorDocsEl = document.getElementById('contador-docs');
+    const editorNomeEl = document.getElementById('editor-nome');
+    const campoBusca = document.getElementById('campo-busca');
+    const saveIndicator = document.getElementById('save-indicator');
+    const contadorPalavrasEl = document.getElementById('contador-palavras');
+    const contadorCaracteresEl = document.getElementById('contador-caracteres');
+    const tempoLeituraEl = document.getElementById('tempo-leitura');
+    const selectOrdem = document.getElementById('select-ordem');
+    const btnTema = document.getElementById('btn-tema');
+    const btnSyncScroll = document.getElementById('btn-sync-scroll');
+
+    // ============================================================
+    // PREFERÊNCIAS (tema + sync)
+    // ============================================================
+    const CHAVE_PREFERENCIAS = "markdown-editor-prefs-v1";
+    let temaEscuro = false;
+    let scrollSyncAtivo = true;
+
+    function carregarPreferencias() {
+        try {
+            const raw = localStorage.getItem(CHAVE_PREFERENCIAS);
+            if (!raw) return;
+            const p = JSON.parse(raw);
+            if (typeof p.temaEscuro === 'boolean') temaEscuro = p.temaEscuro;
+            if (typeof p.scrollSyncAtivo === 'boolean') scrollSyncAtivo = p.scrollSyncAtivo;
+        } catch (_) { /* ignora */ }
+    }
+
+    function salvarPreferencias() {
+        try {
+            localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify({
+                temaEscuro: temaEscuro,
+                scrollSyncAtivo: scrollSyncAtivo
+            }));
+        } catch (_) { /* ignora */ }
+    }
+
+    function aplicarTema() {
+        if (temaEscuro) {
+            document.body.classList.add('dark');
+            btnTema.textContent = '☀️';
+            btnTema.title = 'Alternar para tema claro';
+        } else {
+            document.body.classList.remove('dark');
+            btnTema.textContent = '🌙';
+            btnTema.title = 'Alternar para tema escuro';
+        }
+    }
+
+    function aplicarSyncScroll() {
+        if (scrollSyncAtivo) {
+            btnSyncScroll.classList.add('on');
+            btnSyncScroll.classList.remove('off');
+            btnSyncScroll.title = 'Sincronização ativa — clique para desativar';
+        } else {
+            btnSyncScroll.classList.remove('on');
+            btnSyncScroll.classList.add('off');
+            btnSyncScroll.title = 'Sincronização inativa — clique para ativar';
+        }
+    }
+
+    carregarPreferencias();
+    aplicarTema();
+    aplicarSyncScroll();
+
+    btnTema.addEventListener('click', () => {
+        temaEscuro = !temaEscuro;
+        aplicarTema();
+        salvarPreferencias();
+        campoStatus.textContent = temaEscuro ? "🌙 Tema escuro ativado." : "☀️ Tema claro ativado.";
+    });
+
+    btnSyncScroll.addEventListener('click', () => {
+        scrollSyncAtivo = !scrollSyncAtivo;
+        aplicarSyncScroll();
+        salvarPreferencias();
+        campoStatus.textContent = scrollSyncAtivo
+            ? "🔗 Sincronização de rolagem ativada."
+            : "🔗 Sincronização de rolagem desativada.";
+    });
+
+    // ============================================================
+    // SCROLL SYNC
+    // ============================================================
+    let syncOrigem = null;
+
+    function sincronizarScroll(origem, destino) {
+        if (!scrollSyncAtivo || syncOrigem === destino) return;
+        const maxOrigem = origem.scrollHeight - origem.clientHeight;
+        const maxDestino = destino.scrollHeight - destino.clientHeight;
+        if (maxOrigem <= 0 || maxDestino <= 0) return;
+
+        const pct = origem.scrollTop / maxOrigem;
+        syncOrigem = origem;
+        destino.scrollTop = pct * maxDestino;
+        requestAnimationFrame(() => { syncOrigem = null; });
+    }
+
+    campoEditor.addEventListener('scroll', () => sincronizarScroll(campoEditor, campoPreview), { passive: true });
+    campoPreview.addEventListener('scroll', () => sincronizarScroll(campoPreview, campoEditor), { passive: true });
+
+    // ============================================================
+    // PERSISTÊNCIA DE DOCUMENTOS
+    // ============================================================
+    const CHAVE_STORAGE = "markdown-editor-docs-v1";
+    let saveTimer = null;
+    let indicadorTimer = null;
+
+    function marcarPendente() {
+        saveIndicator.textContent = "● não salvo";
+        saveIndicator.className = "save-indicator pendente";
+        clearTimeout(indicadorTimer);
+    }
+    function marcarSalvo() {
+        saveIndicator.textContent = "✔ salvo";
+        saveIndicator.className = "save-indicator salvo";
+        clearTimeout(indicadorTimer);
+        indicadorTimer = setTimeout(() => {
+            saveIndicator.className = "save-indicator oculto";
+        }, 1800);
+    }
+
+    function salvarEstadoAgora() {
+        try {
+            if (documentos[indiceAtivo]) documentos[indiceAtivo].lastEdited = Date.now();
+            const payload = JSON.stringify({
+                versao: 2,
+                documentos: documentos,
+                indiceAtivo: indiceAtivo,
+                sortMode: sortMode
+            });
+            localStorage.setItem(CHAVE_STORAGE, payload);
+            marcarSalvo();
+        } catch (e) {
+            if (e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ""))) {
+                campoStatus.textContent = "⚠️ Limite de armazenamento do navegador atingido. Baixe os arquivos para não perder o conteúdo.";
+                saveIndicator.textContent = "⚠ não salvo";
+                saveIndicator.className = "save-indicator pendente";
+            } else {
+                console.warn("Falha ao salvar:", e);
+            }
+        }
+    }
+
+    function agendarSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(salvarEstadoAgora, 300);
+    }
+
+    function carregarEstadoSalvo() {
+        try {
+            const raw = localStorage.getItem(CHAVE_STORAGE);
+            if (!raw) return false;
+            const dados = JSON.parse(raw);
+            if (!dados || !Array.isArray(dados.documentos)) return false;
+            documentos = dados.documentos.map(d => ({
+                nome: typeof d.nome === 'string' && d.nome ? d.nome : 'sem-nome.md',
+                conteudo: typeof d.conteudo === 'string' ? d.conteudo : '',
+                lastEdited: typeof d.lastEdited === 'number' ? d.lastEdited : Date.now()
+            }));
+            indiceAtivo = Math.max(0, Math.min(Number(dados.indiceAtivo) || 0, documentos.length - 1));
+            sortMode = ['manual','alfabetica-az','alfabetica-za','recentes'].includes(dados.sortMode) ? dados.sortMode : 'manual';
+            return true;
+        } catch (e) {
+            console.warn("Falha ao ler localStorage:", e);
+            return false;
+        }
+    }
+
+    // ============================================================
+    // ESTADO
+    // ============================================================
+    let documentos = [];
+    let indiceAtivo = 0;
+    let exemploInicial = true;
+    let sortMode = 'manual';
+    let dragSourceIndex = -1;
+
+    if (carregarEstadoSalvo()) {
+        exemploInicial = false;
+        if (documentos.length > 0) {
+            campoEditor.value = documentos[indiceAtivo].conteudo;
+            editorNomeEl.textContent = documentos[indiceAtivo].nome;
+        } else {
+            campoEditor.value = "";
+            editorNomeEl.textContent = "—";
+        }
+        campoStatus.textContent = `💾 Sessão restaurada (${documentos.length} documento(s)).`;
+    } else {
+        documentos.push({ nome: "exemplo.md", conteudo: campoEditor.value, lastEdited: Date.now() });
+    }
+
+    selectOrdem.value = sortMode;
+    renderizarListaDocs();
+    atualizarPreview();
+    atualizarContador();
+
+    // ============================================================
+    // MODO LEITURA
+    // ============================================================
+    let modoLeitura = false;
+    btnModoLeitura.addEventListener('click', () => {
+        modoLeitura = !modoLeitura;
+        if (modoLeitura) {
+            layoutPrincipal.classList.add('reading-mode');
+            btnModoLeitura.textContent = "✏️ Modo Edição";
+            btnModoLeitura.classList.replace("purple", "sec");
+            campoStatus.textContent = "Modo leitura ativado. Use a barra lateral para navegar.";
+        } else {
+            layoutPrincipal.classList.remove('reading-mode');
+            btnModoLeitura.textContent = "📖 Modo Leitura";
+            btnModoLeitura.classList.replace("sec", "purple");
+            campoStatus.textContent = "Modo edição ativado.";
+        }
+    });
+
+    // ============================================================
+    // BUSCA + ORDENAÇÃO
+    // ============================================================
+    campoBusca.addEventListener('input', renderizarListaDocs);
+
+    selectOrdem.addEventListener('change', (e) => {
+        sortMode = ['manual','alfabetica-az','alfabetica-za','recentes'].includes(e.target.value) ? e.target.value : 'manual';
+        renderizarListaDocs();
+        agendarSave();
+        const label = e.target.options[e.target.selectedIndex].text;
+        campoStatus.textContent = `Ordenação alterada para: ${label}.`;
+    });
+
+    // ============================================================
+    // LISTA LATERAL
+    // ============================================================
+    function renderizarListaDocs() {
+        listaDocsEl.innerHTML = "";
+        const termo = (campoBusca.value || "").trim().toLowerCase();
+
+        let visiveis = [];
+        documentos.forEach((doc, i) => {
+            if (!termo || doc.nome.toLowerCase().includes(termo)) {
+                visiveis.push({ doc, indexOriginal: i });
+            }
+        });
+
+        if (sortMode === 'alfabetica-az') {
+            visiveis.sort((a, b) => a.doc.nome.localeCompare(b.doc.nome, 'pt-BR', { sensitivity: 'base' }));
+        } else if (sortMode === 'alfabetica-za') {
+            visiveis.sort((a, b) => b.doc.nome.localeCompare(a.doc.nome, 'pt-BR', { sensitivity: 'base' }));
+        } else if (sortMode === 'recentes') {
+            visiveis.sort((a, b) => (b.doc.lastEdited || 0) - (a.doc.lastEdited || 0));
+        }
+
+        contadorDocsEl.textContent = termo ? `${visiveis.length} / ${documentos.length}` : String(documentos.length);
+
+        if (documentos.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'lista-vazia';
+            li.textContent = 'Nenhum documento carregado.';
+            li.style.cursor = 'default';
+            listaDocsEl.appendChild(li);
+            return;
+        }
+        if (visiveis.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'lista-vazia';
+            li.textContent = `Nenhum resultado para "${campoBusca.value}".`;
+            li.style.cursor = 'default';
+            listaDocsEl.appendChild(li);
+            return;
+        }
+
+        const dragHabilitado = (sortMode === 'manual') && !termo && documentos.length > 1;
+
+        visiveis.forEach(({ doc, indexOriginal }) => {
+            const li = document.createElement('li');
+            li.className = indexOriginal === indiceAtivo ? 'ativo' : '';
+            li.title = dragHabilitado
+                ? doc.nome + "  (arraste · duplo-clique renomeia)"
+                : doc.nome + "  (duplo-clique renomeia)";
+
+            const icone = document.createElement('span');
+            icone.className = 'icone';
+            icone.textContent = '📄';
+
+            const nome = document.createElement('span');
+            nome.className = 'nome';
+            nome.textContent = doc.nome;
+            nome.title = "Duplo-clique para renomear";
+            nome.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                iniciarRenomear(li, indexOriginal);
+            });
+
+            const btnDup = document.createElement('button');
+            btnDup.type = 'button';
+            btnDup.className = 'btn-item btn-dup';
+            btnDup.textContent = '⧉';
+            btnDup.title = `Duplicar "${doc.nome}"`;
+            btnDup.draggable = false;
+            btnDup.addEventListener('click', (e) => { e.stopPropagation(); duplicarDoc(indexOriginal); });
+
+            const btnX = document.createElement('button');
+            btnX.type = 'button';
+            btnX.className = 'btn-item btn-x';
+            btnX.textContent = '✕';
+            btnX.title = `Remover "${doc.nome}"`;
+            btnX.draggable = false;
+            btnX.addEventListener('click', (e) => { e.stopPropagation(); removerDoc(indexOriginal); });
+
+            li.appendChild(icone);
+            li.appendChild(nome);
+            li.appendChild(btnDup);
+            li.appendChild(btnX);
+
+            li.addEventListener('click', () => {
+                if (documentos[indiceAtivo]) documentos[indiceAtivo].conteudo = campoEditor.value;
+                indiceAtivo = indexOriginal;
+                carregarDocAtivo();
+                agendarSave();
+            });
+
+            if (dragHabilitado) {
+                li.draggable = true;
+                configurarDrag(li, indexOriginal);
+            }
+
+            listaDocsEl.appendChild(li);
+        });
+    }
+
+    // ============================================================
+    // DRAG & DROP
+    // ============================================================
+    function configurarDrag(li, indexOriginal) {
+        li.addEventListener('dragstart', (e) => {
+            dragSourceIndex = indexOriginal;
+            li.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', String(indexOriginal)); } catch (_) {}
+        });
+        li.addEventListener('dragover', (e) => {
+            if (dragSourceIndex === -1 || dragSourceIndex === indexOriginal) return;
+            e.preventDefault();
+            Array.from(listaDocsEl.children).forEach(el => {
+                if (el !== li) el.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+            const rect = li.getBoundingClientRect();
+            const meio = rect.top + rect.height / 2;
+            li.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (e.clientY < meio) li.classList.add('drag-over-top');
+            else li.classList.add('drag-over-bottom');
+            e.dataTransfer.dropEffect = 'move';
+        });
+        li.addEventListener('dragleave', () => {
+            li.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (dragSourceIndex === -1 || dragSourceIndex === indexOriginal) return;
+            const rect = li.getBoundingClientRect();
+            const meio = rect.top + rect.height / 2;
+            let target = indexOriginal;
+            if (e.clientY >= meio) target++;
+            moverDoc(dragSourceIndex, target);
+        });
+        li.addEventListener('dragend', () => {
+            Array.from(listaDocsEl.children).forEach(el => {
+                el.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+            });
+            dragSourceIndex = -1;
+        });
+    }
+
+    function moverDoc(deIndex, paraIndex) {
+        if (deIndex < 0 || deIndex >= documentos.length) return;
+        if (paraIndex < 0 || paraIndex > documentos.length) return;
+        if (deIndex === paraIndex) return;
+        const docAtivo = documentos[indiceAtivo];
+        const [doc] = documentos.splice(deIndex, 1);
+        let alvo = paraIndex;
+        if (deIndex < paraIndex) alvo--;
+        documentos.splice(alvo, 0, doc);
+        indiceAtivo = documentos.indexOf(docAtivo);
+        if (indiceAtivo < 0) indiceAtivo = 0;
+        renderizarListaDocs();
+        agendarSave();
+        campoStatus.textContent = `↕️ "${doc.nome}" movido para a posição ${alvo + 1}.`;
+    }
+
+    // ============================================================
+    // CARREGAR / RENOMEAR / NOVO / DUPLICAR / REMOVER
+    // ============================================================
+    function carregarDocAtivo() {
+        const doc = documentos[indiceAtivo];
+        if (!doc) return;
+        campoEditor.value = doc.conteudo;
+        editorNomeEl.textContent = doc.nome;
+        atualizarPreview();
+        atualizarContador();
+        renderizarListaDocs();
+    }
+
+    function iniciarRenomear(li, indexOriginal) {
+        const nomeSpan = li.querySelector('.nome');
+        if (!nomeSpan) return;
+        const nomeAntigo = documentos[indexOriginal].nome;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'nome-input';
+        input.value = nomeAntigo;
+        input.maxLength = 120;
+        nomeSpan.replaceWith(input);
+        input.focus();
+        const pontoExt = nomeAntigo.lastIndexOf('.');
+        if (pontoExt > 0) input.setSelectionRange(0, pontoExt);
+        else input.select();
+
+        let finalizado = false;
+        function finalizar(salvar) {
+            if (finalizado) return;
+            finalizado = true;
+            if (salvar) {
+                const novo = (input.value || "").trim() || nomeAntigo;
+                if (novo !== nomeAntigo) {
+                    documentos[indexOriginal].nome = novo;
+                    if (indexOriginal === indiceAtivo) editorNomeEl.textContent = novo;
+                    agendarSave();
+                    campoStatus.textContent = `✏️ Renomeado para "${novo}".`;
+                }
+            }
+            renderizarListaDocs();
+        }
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); finalizar(true); }
+            else if (e.key === 'Escape') { e.preventDefault(); finalizar(false); }
+        });
+        input.addEventListener('blur', () => finalizar(true));
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('dblclick', (e) => e.stopPropagation());
+        input.addEventListener('dragstart', (e) => e.preventDefault());
+    }
+
+    document.getElementById('btn-novo-doc').addEventListener('click', criarNovoDoc);
+    function criarNovoDoc() {
+        if (exemploInicial) { documentos = []; exemploInicial = false; }
+        let n = 1, nome;
+        do { nome = `sem-titulo-${n}.md`; n++; } while (documentos.some(d => d.nome === nome));
+        if (campoBusca.value) campoBusca.value = "";
+        documentos.push({ nome, conteudo: "", lastEdited: Date.now() });
+        indiceAtivo = documentos.length - 1;
+        carregarDocAtivo();
+        agendarSave();
+        campoEditor.focus();
+        campoStatus.textContent = `📄 Novo documento: "${nome}".`;
+    }
+
+    function gerarNomeCopia(nome) {
+        const m = nome.match(/(\.[^.]*)$/);
+        const ext = m ? m[1] : '';
+        const base = ext ? nome.slice(0, nome.length - ext.length) : nome;
+        const baseLimpa = base.replace(/\s*\(cópia(?:\s+\d+)?\)$/, '');
+        let n = 1, cand;
+        do {
+            const suf = n === 1 ? ' (cópia)' : ` (cópia ${n})`;
+            cand = `${baseLimpa}${suf}${ext}`;
+            n++;
+        } while (documentos.some(d => d.nome === cand));
+        return cand;
+    }
+
+    function duplicarDoc(i) {
+        if (i < 0 || i >= documentos.length) return;
+        const orig = documentos[i];
+        const nome = gerarNomeCopia(orig.nome);
+        if (campoBusca.value) campoBusca.value = "";
+        documentos.splice(i + 1, 0, { nome, conteudo: orig.conteudo, lastEdited: Date.now() });
+        indiceAtivo = i + 1;
+        carregarDocAtivo();
+        agendarSave();
+        campoStatus.textContent = `📄 Documento duplicado: "${nome}".`;
+    }
+
+    function removerDoc(i) {
+        if (i < 0 || i >= documentos.length) return;
+        const doc = documentos[i];
+        if (doc.conteudo && doc.conteudo.trim().length > 0) {
+            if (!confirm(`Remover "${doc.nome}" da lista?\n\nO conteúdo será perdido se não tiver sido baixado.`)) return;
+        }
+        const eraAtivo = (i === indiceAtivo);
+        documentos.splice(i, 1);
+        if (documentos.length === 0) {
+            indiceAtivo = 0; exemploInicial = false;
+            campoEditor.value = "";
+            editorNomeEl.textContent = "—";
+            atualizarPreview(); atualizarContador();
+            campoStatus.textContent = "Lista vazia.";
+        } else if (eraAtivo) {
+            indiceAtivo = Math.max(0, i - 1);
+            carregarDocAtivo();
+            campoStatus.textContent = `"${doc.nome}" removido. Exibindo "${documentos[indiceAtivo].nome}".`;
+        } else {
+            if (i < indiceAtivo) indiceAtivo--;
+            campoStatus.textContent = `"${doc.nome}" removido.`;
+        }
+        renderizarListaDocs();
+        agendarSave();
+    }
+
+    // ============================================================
+    // CARREGAR ARQUIVOS
+    // ============================================================
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) processarArquivos(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) processarArquivos(e.target.files);
+    });
+
+    function extensaoValida(file) {
+        const nome = (file.name || "").toLowerCase();
+        const ext = nome.substring(nome.lastIndexOf('.'));
+        return ['.md','.markdown','.txt'].includes(ext) || (file.type && file.type.match('text.*'));
+    }
+
+    function processarArquivos(fileList) {
+        const arquivos = Array.from(fileList).filter(extensaoValida);
+        if (arquivos.length === 0) {
+            alert('Nenhum arquivo válido encontrado. Use .md, .markdown ou .txt');
+            fileInput.value = "";
+            return;
+        }
+        if (exemploInicial) { documentos = []; indiceAtivo = 0; exemploInicial = false; }
+        campoStatus.textContent = `⏳ Carregando ${arquivos.length} arquivo(s)...`;
+        let restantes = arquivos.length;
+        const novos = new Array(arquivos.length);
+        arquivos.forEach((file, i) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                novos[i] = { nome: file.name, conteudo: e.target.result, lastEdited: Date.now() };
+                if (--restantes === 0) finalizar();
+            };
+            reader.onerror = () => {
+                novos[i] = { nome: file.name, conteudo: "(erro ao ler)", lastEdited: Date.now() };
+                if (--restantes === 0) finalizar();
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+        function finalizar() {
+            const idx = documentos.length;
+            novos.forEach(d => documentos.push(d));
+            indiceAtivo = idx;
+            renderizarListaDocs();
+            carregarDocAtivo();
+            agendarSave();
+            campoStatus.textContent = `✅ ${novos.length} arquivo(s) adicionado(s). Total: ${documentos.length}.`;
+            fileInput.value = "";
+        }
+    }
+
+    // ============================================================
+    // LIMPAR
+    // ============================================================
+    document.getElementById('btn-limpar-docs').addEventListener('click', () => {
+        if (documentos.length === 0) return;
+        if (!confirm('Remover todos os documentos da lista. Continuar?')) return;
+        documentos = []; indiceAtivo = 0; exemploInicial = false;
+        campoEditor.value = ""; editorNomeEl.textContent = "—";
+        atualizarPreview(); atualizarContador();
+        renderizarListaDocs();
+        agendarSave();
+        campoStatus.textContent = "Lista limpa.";
+    });
+
+    // ============================================================
+    // EXPORTAR TUDO
+    // ============================================================
+    document.getElementById('btn-exportar-tudo').addEventListener('click', () => {
+        if (documentos.length === 0) { alert('Não há documentos para exportar.'); return; }
+        if (documentos[indiceAtivo]) documentos[indiceAtivo].conteudo = campoEditor.value;
+        const partes = documentos.map(doc => `# ${doc.nome}\n\n${doc.conteudo.replace(/\s+$/, "")}`);
+        const conteudo = partes.join("\n\n---\n\n") + "\n";
+        const blob = new Blob(["\uFEFF", conteudo], {type: "text/markdown;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const data = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `documentos-reunidos-${data}.md`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        campoStatus.textContent = `📦 ${documentos.length} documento(s) exportado(s).`;
+    });
+
+    // ============================================================
+    // SYNTAX HIGHLIGHT
+    // ============================================================
+    const KEYWORDS = {
+        js: /\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|this|class|extends|super|import|export|default|from|as|async|await|try|catch|finally|throw|null|undefined|true|false|NaN|Infinity)\b/g,
+        python: /\b(def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|lambda|and|or|not|in|is|None|True|False|self|async|await|global|nonlocal|del|assert)\b/g,
+        bash: /\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|return|export|local|echo|cd|ls|cat|grep|awk|sed|sudo|apt|yum|mkdir|rm|mv|cp|touch|chmod|chown|git|npm|yarn|docker)\b/g,
+        json: /\b(true|false|null)\b/g
+    };
+
+    function highlightCode(code, lang) {
+        lang = (lang || '').toLowerCase().trim();
+        if (!lang) return escaparHtmlMD(code);
+
+        // Aliases
+        const aliases = {
+            javascript: 'js', ts: 'js', typescript: 'js', jsx: 'js', node: 'js',
+            py: 'python', python3: 'python',
+            sh: 'bash', shell: 'bash', zsh: 'bash',
+            json5: 'json',
+            xml: 'html', svg: 'html'
+        };
+        lang = aliases[lang] || lang;
+
+        const stash = [];
+        function protect(html) {
+            const i = stash.push(html) - 1;
+            return `\u0001${i}\u0001`;
+        }
+
+        let s = code;
+
+        if (lang === 'html') return highlightHtml(code);
+        if (lang === 'css') return highlightCss(code);
+
+        if (lang === 'python') {
+            s = s.replace(/"""[\s\S]*?"""/g, m => protect(`<span class="tok-string">${escaparHtmlMD(m)}</span>`));
+            s = s.replace(/'''[\s\S]*?'''/g, m => protect(`<span class="tok-string">${escaparHtmlMD(m)}</span>`));
+            s = s.replace(/#[^\n]*/g, m => protect(`<span class="tok-comment">${escaparHtmlMD(m)}</span>`));
+        } else if (lang === 'bash') {
+            s = s.replace(/#[^\n]*/g, m => protect(`<span class="tok-comment">${escaparHtmlMD(m)}</span>`));
+        } else if (lang === 'js' || lang === 'json') {
+            s = s.replace(/\/\/[^\n]*/g, m => protect(`<span class="tok-comment">${escaparHtmlMD(m)}</span>`));
+            s = s.replace(/\/\*[\s\S]*?\*\//g, m => protect(`<span class="tok-comment">${escaparHtmlMD(m)}</span>`));
+        }
+
+        // Strings (todos exceto python, já feito acima)
+        if (lang !== 'python') {
+            s = s.replace(/"(?:[^"\\]|\\.)*"/g, m => protect(`<span class="tok-string">${escaparHtmlMD(m)}</span>`));
+            s = s.replace(/'(?:[^'\\]|\\.)*'/g, m => protect(`<span class="tok-string">${escaparHtmlMD(m)}</span>`));
+        }
+        if (lang === 'js') {
+            s = s.replace(/`(?:[^`\\]|\\.)*`/g, m => protect(`<span class="tok-string">${escaparHtmlMD(m)}</span>`));
+        }
+
+        // Escapa o resto
+        s = escaparHtmlMD(s);
+
+        // Keywords
+        if (KEYWORDS[lang]) {
+            s = s.replace(KEYWORDS[lang], '<span class="tok-keyword">$1</span>');
+        }
+
+        // Números
+        s = s.replace(/\b(-?\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
+
+        // Restaura
+        s = s.replace(/\u0001(\d+)\u0001/g, (_, i) => stash[Number(i)]);
+        return s;
+    }
+
+    function highlightHtml(code) {
+        let s = escaparHtmlMD(code);
+        // Comentários
+        s = s.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="tok-comment">$1</span>');
+        // Tags
+        s = s.replace(/(&lt;\/?)([a-zA-Z][a-zA-Z0-9-]*)/g, '$1<span class="tok-keyword">$2</span>');
+        // Atributos
+        s = s.replace(/(\s)([a-zA-Z-]+)(=)/g, '$1<span class="tok-function">$2</span>$3');
+        return s;
+    }
+
+    function highlightCss(code) {
+        let s = escaparHtmlMD(code);
+        // Comentários
+        s = s.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tok-comment">$1</span>');
+        // Propriedades
+        s = s.replace(/([a-zA-Z-]+)(\s*):/g, '<span class="tok-function">$1</span>$2:');
+        // Strings
+        s = s.replace(/(&quot;[^&]*?&quot;|'[^']*?')/g, '<span class="tok-string">$1</span>');
+        return s;
+    }
+
+    // ============================================================
+    // PARSER MARKDOWN
+    // ============================================================
+    function escaparHtmlMD(texto) {
+        return String(texto == null ? "" : texto)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function inlineMarkdownMD(texto) {
+        let s = escaparHtmlMD(texto);
+        const codigos = [];
+        s = s.replace(/`([^`]+)`/g, (_, c) => {
+            const i = codigos.push(`<code>${c}</code>`) - 1;
+            return `@@MD_CODE_${i}@@`;
+        });
+        s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<span class="md-imagem">🖼️ $1</span>');
+        s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+        s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+        s = s.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+        s = s.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
+        s = s.replace(/ {2}$/, '<br>');
+        codigos.forEach((c, i) => { s = s.replace(`@@MD_CODE_${i}@@`, c); });
+        return s;
+    }
+
+    function renderMarkdownTemporario(md) {
+        const linhas = String(md == null ? "" : md).replace(/\r\n?/g, "\n").split("\n");
+        let html = "";
+        let emLista = false, listaOrdenada = false, emQuote = false, emCodigo = false, emTabela = false;
+        let blocoCodigo = [], tabelaLinhas = [], langCodigo = '';
+
+        function fecharLista() { if (emLista) { html += listaOrdenada ? "</ol>" : "</ul>"; emLista = false; } }
+        function fecharQuote() { if (emQuote) { html += "</blockquote>"; emQuote = false; } }
+        function ehSeparadorTabela(l) {
+            return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(l);
+        }
+        function renderTabela() {
+            if (!tabelaLinhas.length) return;
+            const lv = tabelaLinhas.filter(l => l.trim());
+            if (!lv.length) return;
+            const parse = l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(x => x.trim());
+            const cab = parse(lv[0]);
+            let inicio = 1;
+            if (lv[1] && ehSeparadorTabela(lv[1])) inicio = 2;
+            html += '<div class="md-table-wrap"><table><thead><tr>' +
+                cab.map(c => `<th>${inlineMarkdownMD(c)}</th>`).join("") +
+                '</tr></thead><tbody>';
+            for (let i = inicio; i < lv.length; i++) {
+                const cel = parse(lv[i]);
+                html += '<tr>' + cel.map(c => `<td>${inlineMarkdownMD(c)}</td>`).join("") + '</tr>';
+            }
+            html += '</tbody></table></div>';
+        }
+
+        for (let i = 0; i < linhas.length; i++) {
+            const linha = linhas[i];
+            const trim = linha.trim();
+
+            if (emCodigo) {
+                if (/^```/.test(trim)) {
+                    const cod = blocoCodigo.join("\n");
+                    html += `<pre><code>${highlightCode(cod, langCodigo)}</code></pre>`;
+                    emCodigo = false; blocoCodigo = []; langCodigo = '';
+                } else blocoCodigo.push(linha);
+                continue;
+            }
+            if (/^```/.test(trim)) {
+                fecharLista(); fecharQuote();
+                if (emTabela) { renderTabela(); tabelaLinhas = []; emTabela = false; }
+                emCodigo = true; blocoCodigo = [];
+                langCodigo = trim.replace(/^```/, '').trim();
+                continue;
+            }
+
+            const prox = (linhas[i + 1] || "").trim();
+            if (trim.includes("|") && (ehSeparadorTabela(prox) || emTabela)) {
+                fecharLista(); fecharQuote();
+                if (!emTabela) emTabela = true;
+                tabelaLinhas.push(linha);
+                const proxL = linhas[i + 1];
+                if (!proxL || (!proxL.includes("|") && !ehSeparadorTabela(proxL))) {
+                    renderTabela(); tabelaLinhas = []; emTabela = false;
+                }
+                continue;
+            }
+            if (emTabela) { renderTabela(); tabelaLinhas = []; emTabela = false; }
+
+            if (!trim) { fecharLista(); fecharQuote(); continue; }
+
+            const h = trim.match(/^(#{1,6})\s+(.+)$/);
+            if (h) {
+                fecharLista(); fecharQuote();
+                const n = h[1].length;
+                html += `<h${n}>${inlineMarkdownMD(h[2])}</h${n}>`;
+                continue;
+            }
+
+            if (/^---+$/.test(trim) || /^\*\*\*+$/.test(trim)) {
+                fecharLista(); fecharQuote();
+                html += "<hr>";
+                continue;
+            }
+
+            if (/^>\s?/.test(trim)) {
+                fecharLista();
+                if (!emQuote) { html += "<blockquote>"; emQuote = true; }
+                html += `<p>${inlineMarkdownMD(trim.replace(/^>\s?/, ""))}</p>`;
+                continue;
+            }
+
+            const ul = trim.match(/^[-*+]\s+(.+)$/);
+            const ol = trim.match(/^\d+[.)]\s+(.+)$/);
+            if (ul || ol) {
+                fecharQuote();
+                const ord = !!ol;
+                if (!emLista || listaOrdenada !== ord) {
+                    fecharLista();
+                    html += ord ? "<ol>" : "<ul>";
+                    emLista = true;
+                    listaOrdenada = ord;
+                }
+                html += `<li>${inlineMarkdownMD((ul || ol)[1])}</li>`;
+                continue;
+            }
+
+            fecharLista(); fecharQuote();
+            html += `<p>${inlineMarkdownMD(trim)}</p>`;
+        }
+
+        if (emCodigo) {
+            const cod = blocoCodigo.join("\n");
+            html += `<pre><code>${highlightCode(cod, langCodigo)}</code></pre>`;
+        }
+        if (emTabela) renderTabela();
+        fecharLista(); fecharQuote();
+        return html;
+    }
+
+    function atualizarPreview() {
+        campoPreview.innerHTML = renderMarkdownTemporario(campoEditor.value);
+    }
+
+    // ============================================================
+    // CONTADOR
+    // ============================================================
+    function atualizarContador() {
+        const texto = campoEditor.value || "";
+        const palavras = (texto.match(/\S+/g) || []).length;
+        const caracteres = texto.length;
+        const minutos = palavras === 0 ? 0 : Math.max(1, Math.round(palavras / 200));
+        contadorPalavrasEl.textContent = palavras.toLocaleString("pt-BR") + (palavras === 1 ? " palavra" : " palavras");
+        contadorCaracteresEl.textContent = caracteres.toLocaleString("pt-BR") + (caracteres === 1 ? " caractere" : " caracteres");
+        tempoLeituraEl.textContent = `~${minutos} min de leitura`;
+    }
+
+    // ============================================================
+    // DIGITAÇÃO
+    // ============================================================
+    function aoDigitar() {
+        if (documentos[indiceAtivo]) {
+            documentos[indiceAtivo].conteudo = campoEditor.value;
+            documentos[indiceAtivo].lastEdited = Date.now();
+        }
+        atualizarPreview();
+        atualizarContador();
+        marcarPendente();
+        agendarSave();
+    }
+    campoEditor.addEventListener("input", aoDigitar);
+
+    // ============================================================
+    // ATALHOS
+    // ============================================================
+    function envolverSelecao(antes, depois) {
+        const start = campoEditor.selectionStart;
+        const end = campoEditor.selectionEnd;
+        const texto = campoEditor.value;
+        const sel = texto.substring(start, end);
+
+        if (!sel) {
+            campoEditor.value = texto.substring(0, start) + antes + depois + texto.substring(end);
+            const pos = start + antes.length;
+            campoEditor.selectionStart = campoEditor.selectionEnd = pos;
+        } else {
+            const jaEnvolvido =
+                texto.substring(start - antes.length, start) === antes &&
+                texto.substring(end, end + depois.length) === depois;
+            if (jaEnvolvido) {
+                campoEditor.value = texto.substring(0, start - antes.length) + sel + texto.substring(end + depois.length);
+                campoEditor.selectionStart = start - antes.length;
+                campoEditor.selectionEnd = end - antes.length;
+            } else {
+                campoEditor.value = texto.substring(0, start) + antes + sel + depois + texto.substring(end);
+                campoEditor.selectionStart = start + antes.length;
+                campoEditor.selectionEnd = end + antes.length;
+            }
+        }
+        aoDigitar();
+        campoEditor.focus();
+    }
+
+    function inserirLink() {
+        const start = campoEditor.selectionStart;
+        const end = campoEditor.selectionEnd;
+        const texto = campoEditor.value;
+        const sel = texto.substring(start, end);
+        const url = prompt("URL do link:", "https://");
+        if (!url) return;
+        const rot = sel || "texto do link";
+        const md = `[${rot}](${url})`;
+        campoEditor.value = texto.substring(0, start) + md + texto.substring(end);
+        const pos = start + md.length;
+        campoEditor.selectionStart = campoEditor.selectionEnd = pos;
+        aoDigitar();
+        campoEditor.focus();
+    }
+
+    campoEditor.addEventListener("keydown", (e) => {
+        const ctrl = e.ctrlKey || e.metaKey;
+        if (ctrl && !e.shiftKey && !e.altKey) {
+            const k = e.key.toLowerCase();
+            if (k === "b") { e.preventDefault(); envolverSelecao("**", "**"); return; }
+            if (k === "i") { e.preventDefault(); envolverSelecao("*", "*"); return; }
+            if (k === "k") { e.preventDefault(); inserirLink(); return; }
+            if (k === "s") { e.preventDefault(); document.getElementById("btn-baixar-md").click(); return; }
+        }
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            if ("speechSynthesis" in window && window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                leituraEmAndamento = false;
+                labelStatusVoz.textContent = "Leitura interrompida (Esc).";
+            }
+        }
+    });
+
+    // ============================================================
+    // BAIXAR .MD
+    // ============================================================
+    document.getElementById('btn-baixar-md').addEventListener('click', () => {
+        const doc = documentos[indiceAtivo];
+        const nomeBase = doc ? doc.nome.replace(/\.(md|markdown|txt)$/i, "") : "documento";
+        const blob = new Blob(["\uFEFF", campoEditor.value], {type: "text/markdown;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${nomeBase || "documento"}.md`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        campoStatus.textContent = `Arquivo "${a.download}" baixado.`;
+    });
+
+    // ============================================================
+    // COPIAR PRÉVIA
+    // ============================================================
+    document.getElementById('btn-copiar-preview').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-copiar-preview');
+        const original = btn.textContent;
+        const texto = (campoPreview.innerText || "").trim();
+        async function fallback(t) {
+            const ta = document.createElement('textarea');
+            ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+            ta.remove(); return ok;
+        }
+        let ok = false;
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(texto); ok = true;
+            } else { ok = await fallback(texto); }
+        } catch (_) { ok = await fallback(texto); }
+
+        btn.textContent = ok ? "✔ Copiado!" : "✖ Falhou";
+        setTimeout(() => { btn.textContent = original; }, 1500);
+        campoStatus.textContent = ok ? "📋 Texto copiado." : "Não foi possível copiar. Use Ctrl+C.";
+    });
+
+    // ============================================================
+    // LEITOR POR VOZ
+    // ============================================================
+    let filaVoz = [], indiceFilaVoz = 0, leituraEmAndamento = false;
+    const seletorVoz = document.getElementById("voz-select");
+    const labelStatusVoz = document.getElementById("voz-status");
+    const selectVelocidade = document.getElementById("velocidade-voz");
+
+    function carregarVozes() {
+        if (!("speechSynthesis" in window)) {
+            if (seletorVoz) seletorVoz.innerHTML = '<option value="">Indisponível</option>';
+            if (labelStatusVoz) labelStatusVoz.textContent = "Navegador sem suporte a voz.";
+            return;
+        }
+        const vozes = window.speechSynthesis.getVoices();
+        if (!vozes || vozes.length === 0) return;
+        seletorVoz.innerHTML = "";
+        let idxPtBr = -1;
+        vozes.forEach((voz, i) => {
+            const op = document.createElement("option");
+            op.value = i;
+            op.textContent = `${voz.name} (${voz.lang})`;
+            seletorVoz.appendChild(op);
+            if (idxPtBr === -1 && voz.lang.toLowerCase().includes("pt-br")) idxPtBr = i;
+        });
+        if (idxPtBr !== -1) seletorVoz.value = idxPtBr;
+        labelStatusVoz.textContent = `${vozes.length} vozes carregadas.`;
+    }
+
+    function textoParaLeitura(texto) {
+        return String(texto || "")
+            .replace(/```[\s\S]*?```/g, " ")
+            .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+            .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+            .replace(/^\s*>\s?/gm, "")
+            .replace(/^\s*[-*+]\s+/gm, "")
+            .replace(/^\s*\d+[.)]\s+/gm, "")
+            .replace(/[*_~`|]/g, " ")
+            .replace(/[ \t]+/g, " ")
+            .trim();
+    }
+
+    function dividirTextoVoz(texto) {
+        return String(texto || "").split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    }
+
+    function falarProximoBloco() {
+        if (!leituraEmAndamento || indiceFilaVoz >= filaVoz.length) {
+            leituraEmAndamento = false;
+            labelStatusVoz.textContent = "Leitura concluída.";
+            return;
+        }
+        const u = new SpeechSynthesisUtterance(filaVoz[indiceFilaVoz]);
+        const vozes = window.speechSynthesis.getVoices();
+        const v = vozes[Number(seletorVoz.value)];
+        if (v) { u.voice = v; u.lang = v.lang; }
+        u.rate = Number(selectVelocidade.value) || 1;
+        u.onend = () => { if (leituraEmAndamento) { indiceFilaVoz++; falarProximoBloco(); } };
+        labelStatusVoz.textContent = `Lendo bloco ${indiceFilaVoz + 1} de ${filaVoz.length}...`;
+        window.speechSynthesis.speak(u);
+    }
+
+    document.getElementById('btn-ler-tudo').addEventListener('click', () => {
+        window.speechSynthesis.cancel();
+        const t = textoParaLeitura(campoEditor.value);
+        if (!t) return;
+        filaVoz = dividirTextoVoz(t);
+        indiceFilaVoz = 0;
+        leituraEmAndamento = true;
+        falarProximoBloco();
+    });
+    document.getElementById('btn-ler-selecao').addEventListener('click', () => {
+        window.speechSynthesis.cancel();
+        const sel = campoEditor.value.substring(campoEditor.selectionStart, campoEditor.selectionEnd);
+        if (!sel) return alert("Selecione um trecho para ler.");
+        filaVoz = dividirTextoVoz(textoParaLeitura(sel));
+        indiceFilaVoz = 0;
+        leituraEmAndamento = true;
+        falarProximoBloco();
+    });
+    document.getElementById('btn-parar-leitura').addEventListener('click', () => {
+        window.speechSynthesis.cancel();
+        leituraEmAndamento = false;
+        labelStatusVoz.textContent = "Leitura parada.";
+    });
+
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.onvoiceschanged = carregarVozes;
+        setTimeout(carregarVozes, 500);
+    }
+
+    window.addEventListener("beforeunload", () => {
+        clearTimeout(saveTimer);
+        salvarEstadoAgora();
+    });
+
+    console.log("✅ Editor Markdown carregado (Pacote Visual: tema escuro + syntax highlight + scroll sync).");
+})();
+</script>
+</body>
+</html>
